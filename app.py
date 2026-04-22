@@ -7,12 +7,12 @@ from datetime import datetime, timedelta
 import time
 
 # Import custom modules
-from sepsis_core.models.sepsis_model import SepsisPredictor
-from sepsis_core.utils.data_processing import validate_patient_data, normalize_vitals
-from sepsis_core.utils.data_processing import calculate_risk_score, get_risk_category
-from sepsis_core.components.patient_input import render_patient_input_form
-from sepsis_core.components.dashboard import render_patient_dashboard
-from sepsis_core.components.alerts import render_alert_system
+from models.sepsis_model import SepsisPredictor
+from utils.data_processing import validate_patient_data, normalize_vitals
+from utils.data_processing import calculate_risk_score, get_risk_category
+from components.patient_input import render_patient_input_form
+from components.dashboard import render_patient_dashboard
+from components.alerts import render_alert_system
 
 # Page configuration
 st.set_page_config(

@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
-from sepsis_core.utils.risk_calculator import get_risk_category, get_risk_color, generate_risk_recommendations
-from sepsis_core.utils.data_processing import detect_trends, calculate_vital_signs_scores
+from utils.risk_calculator import get_risk_category, get_risk_color, generate_risk_recommendations
+from utils.data_processing import detect_trends, calculate_vital_signs_scores
 
 def render_patient_dashboard(patient_records):
     """
@@ -332,7 +332,7 @@ def render_clinical_recommendations(latest_record):
                 st.success(recommendation)
     
     # Intervention urgency
-    from sepsis_core.utils.risk_calculator import calculate_intervention_urgency
+    from utils.risk_calculator import calculate_intervention_urgency
     urgency = calculate_intervention_urgency(risk_score)
     
     st.markdown("#### ⏰ Intervention Urgency")

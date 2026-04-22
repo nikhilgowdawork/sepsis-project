@@ -1,5 +1,5 @@
 import streamlit as st
-from sepsis_core.utils.data_processing import normalize_vitals
+from utils.data_processing import normalize_vitals
 
 def render_patient_input_form():
     """
@@ -206,7 +206,7 @@ def render_input_validation_feedback(patient_data):
     Args:
         patient_data (dict): Patient data to validate
     """
-    from sepsis_core.utils.data_processing import validate_patient_data
+    from utils.data_processing import validate_patient_data
     
     validation_result = validate_patient_data(patient_data)
     

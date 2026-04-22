@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-from sepsis_core.utils.risk_calculator import get_risk_category, calculate_intervention_urgency
+from utils.risk_calculator import get_risk_category, calculate_intervention_urgency
 
 def render_alert_system(patient_data):
     """
