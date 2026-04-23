@@ -89,11 +89,13 @@ def normalize_vitals(patient_data: Dict) -> Dict:
     ]
     
     for field in numeric_fields:
-        if field in normalized_data and normalized_data[field] is not None:
+        if field in normalized_data and normalized_data[field] not in [None, ""]:
             try:
                 normalized_data[field] = float(normalized_data[field])
             except (ValueError, TypeError):
-                normalized_data[field] = None
+                normalized_data[field] = 0.0 # Default fallback
+        else:
+            normalized_data[field] = 0.0
     
     # Round to appropriate decimal places
     if 'temperature' in normalized_data:
@@ -264,14 +266,15 @@ def detect_trends(patient_history: pd.DataFrame, window_size: int = 3) -> Dict:
     return {'trends': trends, 'alerts': alerts}
 
 def calculate_risk_score(data):
-    # temporary logic
-    return 0.5
+    """Deprioritized in favor of sepsis_model.predict_risk"""
+    return 0.0
 
 def get_risk_category(score):
-    if score > 0.7:
+    if score > 75:
+        return "Critical Risk"
+    elif score > 50:
         return "High Risk"
-    elif score > 0.4:
-        return "Medium Risk"
+    elif score > 25:
+        return "Moderate Risk"
     else:
         return "Low Risk"
-

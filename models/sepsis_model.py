@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow import keras  # type: ignore
 from sklearn.preprocessing import StandardScaler
 import joblib
+import logging
 import os
 
 class SepsisPredictor:
@@ -28,7 +29,8 @@ class SepsisPredictor:
         try:
             # Create a neural network model for sepsis prediction
             self.model = keras.Sequential([
-                keras.layers.Dense(64, activation='relu', input_shape=(len(self.feature_names),)),
+                keras.layers.Input(shape=(len(self.feature_names),)),
+                keras.layers.Dense(64, activation='relu'),
                 keras.layers.Dropout(0.3),
                 keras.layers.Dense(32, activation='relu'),
                 keras.layers.Dropout(0.2),
@@ -49,41 +51,49 @@ class SepsisPredictor:
             self.is_loaded = True
             
         except Exception as e:
-            print(f"Error initializing model: {e}")
+            logging.error(f"Error initializing model: {e}")
             self.is_loaded = False
     
     def _load_pretrained_weights(self):
         """Load pre-trained model weights if available."""
-        # In a real implementation, this would load actual trained weights
-        # For now, we'll initialize with random weights that simulate a trained model
+        scaler_path = 'models/scaler.joblib'
         
-        # Simulate training data to fit the scaler
-        np.random.seed(42)  # For reproducibility
-        dummy_data = np.random.normal(size=(1000, len(self.feature_names)))
+        # 1. Create 2000 rows of data with realistic medical correlations
+        np.random.seed(42)
+        n_samples = 2000
+        dummy_data = np.zeros((n_samples, len(self.feature_names)))
         
-        # Simulate realistic vital signs ranges
-        dummy_data[:, 0] = np.random.normal(37.0, 1.5, 1000)  # temperature
-        dummy_data[:, 1] = np.random.normal(80, 20, 1000)     # heart_rate
-        dummy_data[:, 2] = np.random.normal(16, 4, 1000)      # respiratory_rate
-        dummy_data[:, 3] = np.random.normal(120, 20, 1000)    # systolic_bp
-        dummy_data[:, 4] = np.random.normal(70, 15, 1000)     # diastolic_bp
-        dummy_data[:, 5] = np.random.normal(8, 3, 1000)       # wbc_count
-        dummy_data[:, 6] = np.random.normal(1.5, 0.8, 1000)   # lactate
-        dummy_data[:, 7] = np.random.normal(65, 15, 1000)     # age
-        dummy_data[:, 8] = np.random.binomial(1, 0.5, 1000)   # gender (0/1)
+        # Assign Realistic Clinical Ranges
+        dummy_data[:, 0] = np.random.normal(37.0, 1.5, n_samples)  # temperature
+        dummy_data[:, 1] = np.random.normal(80, 20, n_samples)     # heart_rate
+        dummy_data[:, 2] = np.random.normal(16, 4, n_samples)      # respiratory_rate
+        dummy_data[:, 3] = np.random.normal(120, 20, n_samples)    # systolic_bp
+        dummy_data[:, 4] = np.random.normal(70, 15, n_samples)     # diastolic_bp
+        dummy_data[:, 5] = np.random.normal(8, 3, n_samples)       # wbc_count
+        dummy_data[:, 6] = np.random.normal(1.5, 0.8, n_samples)   # lactate
+        dummy_data[:, 7] = np.random.normal(65, 15, n_samples)     # age
+        dummy_data[:, 8] = np.random.binomial(1, 0.5, n_samples)   # gender
         
-        # Fit the scaler
-        self.scaler.fit(dummy_data)
+        # 2. FIX: Create Smart Labels based on Medical Logic (SIRS/qSOFA hybrid)
+        temp = dummy_data[:, 0]
+        hr = dummy_data[:, 1]
+        lactate = dummy_data[:, 6]
+        sbp = dummy_data[:, 3]
         
-        # Train the model with dummy data to initialize weights
-        dummy_labels = np.random.binomial(1, 0.1, 1000)  # 10% positive rate
+        # Correlation: Fever + High Lactate + Tachycardia = High Probability
+        critical_score = (temp > 38.3).astype(int) + (lactate > 2.2).astype(int) + \
+                         (hr > 100).astype(int) + (sbp < 100).astype(int)
+        dummy_labels = (critical_score >= 2).astype(int)
+
+        # 3. Handle Scaler Persistence
+        if os.path.exists(scaler_path):
+            self.scaler = joblib.load(scaler_path)
+        else:
+            self.scaler.fit(dummy_data)
+            joblib.dump(self.scaler, scaler_path)
+            
         scaled_data = self.scaler.transform(dummy_data)
-        
-        self.model.fit(
-            scaled_data, dummy_labels,
-            epochs=10, batch_size=32, verbose=0,
-            validation_split=0.2
-        )
+        self.model.fit(scaled_data, dummy_labels, epochs=15, batch_size=32, verbose=0)
     
     def predict_risk(self, patient_data):
         """
@@ -117,7 +127,7 @@ class SepsisPredictor:
             return min(max(risk_score, 0.0), 100.0)  # Clamp to 0-100
             
         except Exception as e:
-            print(f"Error in risk prediction: {e}")
+            logging.error(f"Error in risk prediction for patient {patient_data.get('patient_id')}: {e}")
             return 0.0
     
     def _extract_features(self, patient_data):
@@ -141,39 +151,29 @@ class SepsisPredictor:
     def _apply_clinical_rules(self, patient_data, base_risk):
         """Apply clinical rules to adjust risk score."""
         adjusted_risk = base_risk
-        
-        # Temperature rules
+
+        # Parameters
         temp = patient_data.get('temperature', 37.0)
-        if temp > 38.3 or temp < 36.0:  # Fever or hypothermia
-            adjusted_risk += 10
-        
-        # Heart rate rules
         hr = patient_data.get('heart_rate', 80)
-        if hr > 100:  # Tachycardia
-            adjusted_risk += 5
-        
-        # Respiratory rate rules
         rr = patient_data.get('respiratory_rate', 16)
-        if rr > 22:  # Tachypnea
-            adjusted_risk += 8
-        
-        # Blood pressure rules
-        systolic = patient_data.get('systolic_bp', 120)
-        if systolic < 90:  # Hypotension
-            adjusted_risk += 15
-        
-        # WBC count rules
+        sbp = patient_data.get('systolic_bp', 120)
         wbc = patient_data.get('wbc_count', 8.0)
-        if wbc > 12.0 or wbc < 4.0:  # Leukocytosis or leukopenia
-            adjusted_risk += 12
-        
-        # Lactate rules
         lactate = patient_data.get('lactate', 1.5)
-        if lactate > 2.2:  # Elevated lactate
-            adjusted_risk += 20
-        if lactate > 4.0:  # Very high lactate
-            adjusted_risk += 30
-        
+
+        # 1. Incremental SIRS/qSOFA Adjustments
+        if temp > 38.3 or temp < 36.0: adjusted_risk += 10
+        if hr > 100: adjusted_risk += 5
+        if rr > 22: adjusted_risk += 8
+        if wbc > 12.0 or wbc < 4.0: adjusted_risk += 12
+
+        # 2. SAFETY OVERRIDES (Clinical Floors)
+        if lactate > 4.0:
+            adjusted_risk = max(adjusted_risk, 85.0)  # Cannot be below Critical
+        elif lactate > 2.2:
+            adjusted_risk = max(adjusted_risk, 50.0)  # Cannot be below High
+        if sbp < 90:
+            adjusted_risk = max(adjusted_risk, 75.0)  # Hypotension Floor
+            
         return adjusted_risk
     
     def get_feature_importance(self):

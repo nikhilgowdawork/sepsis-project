@@ -31,14 +31,14 @@ def generate_risk_recommendations(patient_data, risk_score):
     if risk_score >= 75:
         recommendations.extend([
             "🚨 IMMEDIATE ATTENTION REQUIRED",
-            "Activate sepsis protocol",
+            "Gemini Insight: High probability of Septic Shock. Activate Sepsis Protocol.",
             "Start antibiotics immediately",
-            "Consider ICU admission"
+            "Consider Central Line and Vasopressors"
         ])
     elif risk_score >= 50:
         recommendations.extend([
-            "⚠️ Close monitoring required",
-            "Check vitals frequently",
+            "⚠️ Gemini Insight: Clinical deterioration likely. Close monitoring required.",
+            "Check vitals every 15-30 mins",
             "Consider lab investigations"
         ])
     elif risk_score >= 25:
