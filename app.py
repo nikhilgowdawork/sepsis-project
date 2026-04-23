@@ -47,6 +47,16 @@ def main():
         "Select Page",
         ["Patient Input", "Risk Dashboard", "Historical Analysis", "System Status"]
     )
+
+    # System Pulse Summary in Sidebar
+    if not st.session_state.patient_data.empty:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("System Pulse")
+        high_risk_count = len(st.session_state.patient_data[
+            st.session_state.patient_data['risk_score'] >= 75
+        ]['patient_id'].unique())
+        st.sidebar.metric("Critical Patients", high_risk_count)
+        st.sidebar.info(f"Total Patients: {len(st.session_state.patient_data['patient_id'].unique())}")
     
     if page == "Patient Input":
         render_patient_input_page()

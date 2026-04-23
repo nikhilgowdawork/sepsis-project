@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow import keras  # type: ignore
 from sklearn.preprocessing import StandardScaler
 import joblib
 import os
@@ -123,23 +123,18 @@ class SepsisPredictor:
     def _extract_features(self, patient_data):
         """Extract and prepare features for model input."""
         features = []
-        
-        # Map patient data to model features
-        feature_mapping = {
-            'temperature': patient_data.get('temperature', 37.0),
-            'heart_rate': patient_data.get('heart_rate', 80),
-            'respiratory_rate': patient_data.get('respiratory_rate', 16),
-            'systolic_bp': patient_data.get('systolic_bp', 120),
-            'diastolic_bp': patient_data.get('diastolic_bp', 70),
-            'wbc_count': patient_data.get('wbc_count', 8.0),
-            'lactate': patient_data.get('lactate', 1.5),
-            'age': patient_data.get('age', 65),
-            'gender': 1 if patient_data.get('gender', 'M') == 'M' else 0
+
+        # Define default values for safety
+        defaults = {
+            'temperature': 37.0, 'heart_rate': 80, 'respiratory_rate': 16,
+            'systolic_bp': 120, 'diastolic_bp': 70, 'wbc_count': 8.0,
+            'lactate': 1.5, 'age': 65, 'gender': 'M'
         }
-        
-        # Extract features in the correct order
         for feature_name in self.feature_names:
-            features.append(feature_mapping[feature_name])
+            val = patient_data.get(feature_name, defaults.get(feature_name))
+            if feature_name == 'gender':
+                val = 1 if val == 'M' else 0
+            features.append(val)
         
         return np.array(features)
     
