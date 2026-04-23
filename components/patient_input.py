@@ -46,19 +46,19 @@ def render_patient_input_form():
             help="Normal range: 12-20 breaths/min"
         )
         
-        # Blood Pressure
-        st.markdown("**Blood Pressure (mmHg)**")
-        col_sys, col_dia = st.columns(2)
-        with col_sys:
-            systolic_bp = st.number_input(
+    # Blood Pressure
+    st.markdown("**Blood Pressure (mmHg)**")
+    col_sys, col_dia = st.columns(2)
+    with col_sys:
+        systolic_bp = st.number_input(
                 "Systolic",
                 min_value=50,
                 max_value=250,
                 value=120,
                 step=1
             )
-        with col_dia:
-            diastolic_bp = st.number_input(
+    with col_dia:
+        diastolic_bp = st.number_input(
                 "Diastolic",
                 min_value=30,
                 max_value=150,

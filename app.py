@@ -67,7 +67,7 @@ def render_patient_input_page():
         st.subheader("Patient Information")
         patient_id = st.text_input("Patient ID", placeholder="Enter unique patient identifier")
         
-        if patient_id:
+    if patient_id:
             st.session_state.current_patient_id = patient_id
             
             # Render patient input form
@@ -221,7 +221,7 @@ def render_historical_page():
                 title='Risk Score Trends Over Time'
             )
             fig.add_hline(y=75, line_dash="dash", line_color="red", 
-                         annotation_text="High Risk Threshold")
+            annotation_text="High Risk Threshold")
             st.plotly_chart(fig, use_container_width=True)
             
             # Risk distribution
@@ -254,10 +254,10 @@ def render_system_status_page():
             
             st.metric("Data Completeness", f"{completeness:.1f}%")
             st.metric("Recent Records (Last Hour)", 
-                     len(st.session_state.patient_data[
-                         st.session_state.patient_data['timestamp'] > 
-                         datetime.now() - timedelta(hours=1)
-                     ]))
+                len(st.session_state.patient_data[
+                        st.session_state.patient_data['timestamp'] > 
+                        datetime.now() - timedelta(hours=1)
+                    ]))
         else:
             st.warning("No data available for quality analysis")
     
