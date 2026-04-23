@@ -148,7 +148,7 @@ def render_immediate_risk_assessment(patient_data):
                 'axis': {'range': [None, 100]},
                 'bar': {'color': "darkblue"},
                 'steps': [
-                    {'range': [0, 25], 'color': "lightgreen"},
+                    {'range': [0, 25], 'color': "green"},
                     {'range': [25, 50], 'color': "yellow"},
                     {'range': [50, 75], 'color': "orange"},
                     {'range': [75, 100], 'color': "red"}
@@ -187,6 +187,10 @@ def render_dashboard_page():
         patient_records = st.session_state.patient_data[
             st.session_state.patient_data['patient_id'] == selected_patient
         ].sort_values('timestamp')
+        
+        # Explicitly pass current vitals to predictor on refresh
+        current_vitals = patient_records.iloc[-1].to_dict()
+        st.session_state.sepsis_model.predict_risk(current_vitals)
         
         render_patient_dashboard(patient_records)
 

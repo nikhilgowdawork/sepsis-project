@@ -1,5 +1,12 @@
 def calculate_risk_score(data):
-    return 0.5
+    # Clinical Safety Floor
+    temp = data.get('temperature', 37.0)
+    lactate = data.get('lactate', 1.5)
+    
+    if lactate > 3.0 or temp > 39.5:
+        return 85.0
+    
+    return 0.0
 
 
 def get_risk_category(score):
@@ -60,9 +67,9 @@ def generate_risk_recommendations(patient_data, risk_score):
 def calculate_intervention_urgency(score):
     if score >= 75:
         return {
-            'level': 'IMMEDIATE',
+            'level': 'CRITICAL',
             'timeframe': 'Within 15 minutes',
-            'priority': 'Critical',
+            'priority': 'High',
             'color': 'red'
         }
     elif score >= 50:

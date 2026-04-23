@@ -42,7 +42,7 @@ class SepsisPredictor:
             self.model.compile(
                 optimizer='adam',
                 loss='binary_crossentropy',
-                metrics=['accuracy', 'precision', 'recall']
+                metrics=[tf.keras.metrics.BinaryAccuracy(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]
             )
             
             # Initialize with pre-trained weights if available
@@ -74,16 +74,10 @@ class SepsisPredictor:
         dummy_data[:, 7] = np.random.normal(65, 15, n_samples)     # age
         dummy_data[:, 8] = np.random.binomial(1, 0.5, n_samples)   # gender
         
-        # 2. FIX: Create Smart Labels based on Medical Logic (SIRS/qSOFA hybrid)
+        # 2. FIX: Create Smart Labels based on Medical Logic (Correlated Dummy Data)
         temp = dummy_data[:, 0]
-        hr = dummy_data[:, 1]
         lactate = dummy_data[:, 6]
-        sbp = dummy_data[:, 3]
-        
-        # Correlation: Fever + High Lactate + Tachycardia = High Probability
-        critical_score = (temp > 38.3).astype(int) + (lactate > 2.2).astype(int) + \
-                         (hr > 100).astype(int) + (sbp < 100).astype(int)
-        dummy_labels = (critical_score >= 2).astype(int)
+        dummy_labels = ((temp > 38.5) | (lactate > 2.5)).astype(int)
 
         # 3. Handle Scaler Persistence
         if os.path.exists(scaler_path):
