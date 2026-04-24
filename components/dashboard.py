@@ -5,6 +5,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 from utils.risk_calculator import get_risk_category, get_risk_color, generate_risk_recommendations
 from utils.data_processing import detect_trends, calculate_vital_signs_scores
+from components.alerts import render_quick_actions
 
 def render_patient_dashboard(patient_records):
     """
@@ -38,6 +39,9 @@ def render_patient_dashboard(patient_records):
     
     # Clinical Recommendations
     render_clinical_recommendations(latest_record)
+    
+    st.divider()
+    render_quick_actions(latest_record.to_dict())
 
 def render_current_status(latest_record):
     """Render current patient status with key metrics."""

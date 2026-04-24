@@ -1,6 +1,24 @@
 import streamlit as st
 from datetime import datetime
-from utils.risk_calculator import get_risk_category, calculate_intervention_urgency
+import google.generativeai as genai
+import os
+import time
+from utils.risk_calculator import get_risk_category, calculate_intervention_urgency, get_sepsis_protocol
+
+def get_gemini_recommendations(vitals_data):
+    """Consult Gemini 1.5 Flash for clinical recommendations."""
+    try:
+        api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return "Error: Gemini API key not found in secrets or environment."
+            
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"Act as a senior intensivist. Given these vitals {vitals_data}, provide 3 immediate clinical steps for this patient. Keep it concise."
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"AI Recommendation Service Unavailable: {str(e)}"
 
 def render_alert_system(patient_data):
     """
@@ -206,22 +224,32 @@ def render_quick_actions(patient_data):
     
     with col1:
         if st.button("📞 Call Physician", type="secondary"):
-            st.session_state.show_phys_input = True
+            st.session_state.show_phys_card = True
         
-        if st.session_state.get('show_phys_input'):
-            num = st.text_input("Physician Number", placeholder="+1...")
-            if num:
-                st.markdown(f"[🔗 Dial {num}](tel:{num})")
+        if st.session_state.get('show_phys_card'):
+            st.error("🆘 **EMERGENCY CONTACT**")
+            st.markdown("""
+            **On-Call Intensivist**: Dr. Kumar  
+            **Unit**: Medical ICU  
+            [📞 Click to Dial: +91XXXXXXXXXX](tel:+91XXXXXXXXXX)
+            """)
+            if st.button("Close Contact Card"):
+                st.session_state.show_phys_card = False
         
         if risk_score >= 50 and st.button("🩸 Order Blood Cultures", type="secondary"):
             st.success("✅ Blood culture order placed")
     
     with col2:
         if st.button("✨ View Recommendations", type="primary"):
-             st.info("💡 **Gemini 1.5 Flash Insight**: High risk detected. Recommend Sepsis-3 bundle: 30mL/kg fluids, cultures, and broad-spectrum antibiotics within 1 hour.")
+             vitals_summary = {k: v for k, v in patient_data.items() if k in 
+                              ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'lactate', 'wbc_count']}
+             with st.spinner("Consulting AI Specialist..."):
+                 recommendations = get_gemini_recommendations(vitals_summary)
+                 st.info(f"💡 **Senior Intensivist Recommendations**:\n\n{recommendations}")
 
-        if risk_score > 75 and st.button("💊 Sepsis Protocol", type="primary"):
-             st.success("✅ Sepsis protocol activated")
+        if st.button("💊 Sepsis Protocol", type="primary"):
+             with st.expander("📖 Sepsis-3 Guidelines", expanded=True):
+                 st.markdown(get_sepsis_protocol())
         
         systolic = patient_data.get('systolic_bp', 120)
         if systolic < 90 and st.button("💧 Fluid Bolus", type="secondary"):
@@ -233,8 +261,21 @@ def render_quick_actions(patient_data):
         
         lactate = patient_data.get('lactate', 1.5)
         if lactate > 2.2 and st.button("🔄 Repeat Lactate", type="secondary"):
-            updated_risk = st.session_state.sepsis_model.predict_risk(patient_data)
-            st.toast(f"Immediate Re-assessment: {updated_risk}% Risk")
+            # Logic override: re-run prediction and update session state immediately
+            predictor = st.session_state.sepsis_model
+            updated_risk = predictor.predict_risk(patient_data)
+            
+            if not isinstance(updated_risk, str):
+                if not st.session_state.patient_data.empty:
+                    pid = patient_data.get('patient_id')
+                    # Find indices for this patient
+                    p_indices = st.session_state.patient_data[st.session_state.patient_data['patient_id'] == pid].index
+                    if not p_indices.empty:
+                        # Update the latest entry for real-time dashboard reflecting
+                        st.session_state.patient_data.at[p_indices[-1], 'risk_score'] = updated_risk
+                        st.toast(f"Real-time Re-assessment: {updated_risk:.1f}% Risk", icon="🔄")
+                        time.sleep(1)
+                        st.rerun()
 
 def render_notification_center():
     """Render a notification center for alerts and reminders."""

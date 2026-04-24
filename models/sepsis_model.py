@@ -97,8 +97,14 @@ class SepsisPredictor:
         """Check for physically impossible vital signs."""
         hr = patient_data.get('heart_rate', 0)
         temp = patient_data.get('temperature', 0)
+        sbp = patient_data.get('systolic_bp', 120)
+
         if hr > 300 or temp > 50:
             return False, "⚠️ Physically impossible vitals detected (HR > 300 or Temp > 50). Assessment halted."
+
+        if sbp < 50 or temp > 45:
+            return False, "Critical Data Entry Error: Please verify vitals."
+            
         return True, ""
 
     def predict_risk(self, patient_data):

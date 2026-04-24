@@ -101,3 +101,23 @@ def calculate_intervention_urgency(score, data=None):
             'priority': 'Low',
             'color': 'green'
         }
+
+def get_sepsis_protocol():
+    """Returns a formatted string of the Sepsis-3 Clinical Guidelines."""
+    return """
+    ### 🏥 Sepsis-3 Management Protocol
+    
+    **1. Recognition & Identification**
+    - Screen for infection + organ dysfunction (SOFA ≥ 2).
+    - Use **qSOFA** (SBP ≤ 100, RR ≥ 22, Altered Mentation) for rapid bedside assessment.
+
+    **2. The 1-Hour Bundle**
+    - **Lactate**: Measure immediately; remeasure if initial > 2 mmol/L.
+    - **Cultures**: Obtain blood cultures before starting antibiotics.
+    - **Antibiotics**: Administer broad-spectrum IV antibiotics.
+    - **Fluids**: 30 mL/kg crystalloid for hypotension or lactate ≥ 4 mmol/L.
+    - **Vasopressors**: If hypotensive during/after fluids, maintain MAP ≥ 65 mmHg.
+
+    **3. Ongoing Monitoring**
+    - Frequent re-assessment of fluid status and tissue perfusion.
+    """
