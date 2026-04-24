@@ -1,12 +1,13 @@
 def calculate_risk_score(data):
-    # Clinical Safety Floor
+    """Deterministic manual clinical risk calculation fallback."""
     temp = data.get('temperature', 37.0)
     lactate = data.get('lactate', 1.5)
     
+    score = 0.0
     if lactate > 3.0 or temp > 39.5:
-        return 85.0
+        score = 85.0
     
-    return 0.0
+    return min(max(float(score), 0.0), 100.0)
 
 
 def get_risk_category(score):
@@ -64,8 +65,15 @@ def generate_risk_recommendations(patient_data, risk_score):
     return recommendations
 
 
-def calculate_intervention_urgency(score):
-    if score >= 75:
+def calculate_intervention_urgency(score, data=None):
+    """Calculates urgency based on ML score and Sepsis-3 qSOFA criteria."""
+    qsofa_points = 0
+    if data:
+        if data.get('respiratory_rate', 0) >= 22: qsofa_points += 1
+        if data.get('systolic_bp', 120) <= 100: qsofa_points += 1
+    
+    # Sepsis-3: If 2 or more qSOFA criteria are met, urgency is CRITICAL
+    if score >= 75 or qsofa_points >= 2:
         return {
             'level': 'CRITICAL',
             'timeframe': 'Within 15 minutes',

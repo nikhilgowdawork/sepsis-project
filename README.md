@@ -31,6 +31,13 @@ A comprehensive real-time sepsis risk prediction system designed for Intensive C
 - SIRS criteria and Sepsis-3 guideline compliance
 - qSOFA scoring and organ dysfunction assessment
 
+## Technical Architecture
+
+The SepsisSentinel system utilizes a hybrid intelligence approach:
+- **Pattern Recognition**: A TensorFlow/Keras sequential neural network analyzes non-linear correlations between clinical parameters.
+- **Clinical Safety**: Deterministic clinical rules (SIRS, qSOFA) provide a safety floor for high-acuity scenarios.
+- **Core Intelligence**: Powered by **Google Cloud Platform** and **Gemini 1.5 Flash** for advanced clinical decision support and insight generation.
+
 ## Technology Stack
 
 - **Frontend**: Streamlit for rapid web application development

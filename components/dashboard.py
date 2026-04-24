@@ -331,9 +331,9 @@ def render_clinical_recommendations(latest_record):
             else:
                 st.success(recommendation)
     
-    # Intervention urgency
+    # Intervention urgency using Sepsis-3 qSOFA standard
     from utils.risk_calculator import calculate_intervention_urgency
-    urgency = calculate_intervention_urgency(risk_score)
+    urgency = calculate_intervention_urgency(risk_score, latest_record.to_dict())
     
     st.markdown("#### ⏰ Intervention Urgency")
     

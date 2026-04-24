@@ -34,8 +34,13 @@ if 'patient_data' not in st.session_state:
     st.session_state.patient_data = pd.DataFrame()
 if 'current_patient_id' not in st.session_state:
     st.session_state.current_patient_id = None
+
+@st.cache_resource
+def load_sepsis_model():
+    return SepsisPredictor()
+
 if 'sepsis_model' not in st.session_state:
-    st.session_state.sepsis_model = SepsisPredictor()
+    st.session_state.sepsis_model = load_sepsis_model()
 
 def main():
     st.title("🏥 ICU Sepsis Risk Prediction System")
@@ -92,8 +97,14 @@ def render_patient_input_page():
                     patient_data['timestamp'] = datetime.now()
                     patient_data['patient_id'] = patient_id
                     
-                    # Calculate risk score
-                    risk_score = st.session_state.sepsis_model.predict_risk(patient_data)
+                    # Calculate risk score with reliability fallback
+                    try:
+                        risk_score = st.session_state.sepsis_model.predict_risk(patient_data)
+                    except Exception:
+                        from utils.risk_calculator import calculate_risk_score as manual_calc
+                        risk_score = manual_calc(patient_data)
+                        st.warning("⚠️ ML Model Unavailable. Using Manual Clinical Calculation.")
+
                     patient_data['risk_score'] = risk_score
                     patient_data['risk_category'] = get_risk_category(risk_score)
                     
@@ -190,7 +201,10 @@ def render_dashboard_page():
         
         # Explicitly pass current vitals to predictor on refresh
         current_vitals = patient_records.iloc[-1].to_dict()
-        st.session_state.sepsis_model.predict_risk(current_vitals)
+        try:
+            st.session_state.sepsis_model.predict_risk(current_vitals)
+        except Exception:
+            pass
         
         render_patient_dashboard(patient_records)
 

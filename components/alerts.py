@@ -33,7 +33,7 @@ def render_alert_system(patient_data):
                 st.success(f"✅ **LOW**: {message}")
     
     # Intervention urgency display
-    render_intervention_urgency(risk_score)
+    render_intervention_urgency(patient_data)
     
     # Quick action buttons
     render_quick_actions(patient_data)
@@ -179,9 +179,10 @@ def generate_risk_alerts(patient_data):
     
     return alerts
 
-def render_intervention_urgency(risk_score):
-    """Render intervention urgency information."""
-    urgency = calculate_intervention_urgency(risk_score)
+def render_intervention_urgency(patient_data):
+    """Render intervention urgency information using risk score and qSOFA."""
+    risk_score = patient_data.get('risk_score', 0)
+    urgency = calculate_intervention_urgency(risk_score, patient_data)
     
     st.markdown("### ⏰ Intervention Timeline")
     

@@ -58,9 +58,9 @@ class SepsisPredictor:
         """Load pre-trained model weights if available."""
         scaler_path = 'models/scaler.joblib'
         
-        # 1. Create 2000 rows of data with realistic medical correlations
+        # 1. Create 5000 rows of data with realistic medical correlations
         np.random.seed(42)
-        n_samples = 2000
+        n_samples = 5000
         dummy_data = np.zeros((n_samples, len(self.feature_names)))
         
         # Assign Realistic Clinical Ranges
@@ -74,10 +74,14 @@ class SepsisPredictor:
         dummy_data[:, 7] = np.random.normal(65, 15, n_samples)     # age
         dummy_data[:, 8] = np.random.binomial(1, 0.5, n_samples)   # gender
         
-        # 2. FIX: Create Smart Labels based on Medical Logic (Correlated Dummy Data)
+        # 2. SMART LABELS: Sepsis-3 Inspired Correlated Dummy Data
         temp = dummy_data[:, 0]
+        hr = dummy_data[:, 1]
         lactate = dummy_data[:, 6]
-        dummy_labels = ((temp > 38.5) | (lactate > 2.5)).astype(int)
+        sbp = dummy_data[:, 3]
+        
+        # Logic: (High Temp AND High HR) OR (High Lactate AND Low BP)
+        dummy_labels = ((temp > 38.0) & (hr > 100.0) | (lactate > 2.0) & (sbp < 100.0)).astype(int)
 
         # 3. Handle Scaler Persistence
         if os.path.exists(scaler_path):
