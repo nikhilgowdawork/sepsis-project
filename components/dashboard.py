@@ -340,7 +340,11 @@ def render_clinical_recommendations(latest_record):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Urgency Level", urgency['level'])
+        if urgency['level'] == 'EMERGENCY':
+            st.markdown(f"Urgency Level: <span style='color:red; font-weight:bold;'>{urgency['level']}</span>", unsafe_allow_html=True)
+        else:
+            st.metric("Urgency Level", urgency['level'])
+            
     with col2:
         st.metric("Timeframe", urgency['timeframe'])
     with col3:

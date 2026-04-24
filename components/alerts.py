@@ -185,12 +185,12 @@ def render_intervention_urgency(patient_data):
     urgency = calculate_intervention_urgency(risk_score, patient_data)
     
     st.markdown("### ⏰ Intervention Timeline")
-    
+
     # Color-code based on urgency
-    if urgency['level'] == 'IMMEDIATE':
-        st.error(f"**{urgency['level']}** - {urgency['timeframe']}")
+    if urgency['level'] == 'EMERGENCY':
+        st.markdown(f"<div style='color:red; font-size:20px; font-weight:bold;'>🚨 {urgency['level']} - {urgency['timeframe']}</div>", unsafe_allow_html=True)
     elif urgency['level'] == 'URGENT':
-        st.warning(f"**{urgency['level']}** - {urgency['timeframe']}")
+        st.warning(f"⚠️ **{urgency['level']}** - {urgency['timeframe']}")
     elif urgency['level'] == 'MODERATE':
         st.info(f"**{urgency['level']}** - {urgency['timeframe']}")
     else:
@@ -206,14 +206,22 @@ def render_quick_actions(patient_data):
     
     with col1:
         if st.button("📞 Call Physician", type="secondary"):
-            st.success("✅ Physician notification sent")
+            st.session_state.show_phys_input = True
+        
+        if st.session_state.get('show_phys_input'):
+            num = st.text_input("Physician Number", placeholder="+1...")
+            if num:
+                st.markdown(f"[🔗 Dial {num}](tel:{num})")
         
         if risk_score >= 50 and st.button("🩸 Order Blood Cultures", type="secondary"):
             st.success("✅ Blood culture order placed")
     
     with col2:
-        if risk_score >= 75 and st.button("💊 Sepsis Protocol", type="primary"):
-            st.success("✅ Sepsis protocol activated")
+        if st.button("✨ View Recommendations", type="primary"):
+             st.info("💡 **Gemini 1.5 Flash Insight**: High risk detected. Recommend Sepsis-3 bundle: 30mL/kg fluids, cultures, and broad-spectrum antibiotics within 1 hour.")
+
+        if risk_score > 75 and st.button("💊 Sepsis Protocol", type="primary"):
+             st.success("✅ Sepsis protocol activated")
         
         systolic = patient_data.get('systolic_bp', 120)
         if systolic < 90 and st.button("💧 Fluid Bolus", type="secondary"):
@@ -225,7 +233,8 @@ def render_quick_actions(patient_data):
         
         lactate = patient_data.get('lactate', 1.5)
         if lactate > 2.2 and st.button("🔄 Repeat Lactate", type="secondary"):
-            st.success("✅ Lactate recheck ordered")
+            updated_risk = st.session_state.sepsis_model.predict_risk(patient_data)
+            st.toast(f"Immediate Re-assessment: {updated_risk}% Risk")
 
 def render_notification_center():
     """Render a notification center for alerts and reminders."""

@@ -93,6 +93,14 @@ class SepsisPredictor:
         scaled_data = self.scaler.transform(dummy_data)
         self.model.fit(scaled_data, dummy_labels, epochs=15, batch_size=32, verbose=0)
     
+    def _validate_vitals(self, patient_data):
+        """Check for physically impossible vital signs."""
+        hr = patient_data.get('heart_rate', 0)
+        temp = patient_data.get('temperature', 0)
+        if hr > 300 or temp > 50:
+            return False, "⚠️ Physically impossible vitals detected (HR > 300 or Temp > 50). Assessment halted."
+        return True, ""
+
     def predict_risk(self, patient_data):
         """
         Predict sepsis risk for a patient.
@@ -103,11 +111,15 @@ class SepsisPredictor:
         Returns:
             float: Risk score as percentage (0-100)
         """
+        # Edge-case validation
+        is_valid, warning_msg = self._validate_vitals(patient_data)
+        if not is_valid:
+            return warning_msg
+
         if not self.is_loaded:
             return 0.0
         
         try:
-            # Extract features from patient data
             features = self._extract_features(patient_data)
             
             # Scale features

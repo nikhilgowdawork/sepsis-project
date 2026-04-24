@@ -80,7 +80,9 @@ def render_patient_input_page():
     with col1:
         # Patient identification
         st.subheader("Patient Information")
-        patient_id = st.text_input("Patient ID", placeholder="Enter unique patient identifier")
+        patient_id = st.text_input("Patient ID", 
+                                 value=st.session_state.current_patient_id if st.session_state.current_patient_id else "",
+                                 placeholder="Enter unique patient identifier")
         
     if patient_id:
             st.session_state.current_patient_id = patient_id
@@ -100,9 +102,13 @@ def render_patient_input_page():
                     # Calculate risk score with reliability fallback
                     try:
                         risk_score = st.session_state.sepsis_model.predict_risk(patient_data)
+                        # Handle physical impossibility warnings
+                        if isinstance(risk_score, str):
+                            st.error(risk_score)
+                            return
                     except Exception:
                         from utils.risk_calculator import calculate_risk_score as manual_calc
-                        risk_score = manual_calc(patient_data)
+                        risk_score = manual_calc(patient_data) 
                         st.warning("⚠️ ML Model Unavailable. Using Manual Clinical Calculation.")
 
                     patient_data['risk_score'] = risk_score

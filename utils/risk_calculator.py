@@ -73,9 +73,9 @@ def calculate_intervention_urgency(score, data=None):
         if data.get('systolic_bp', 120) <= 100: qsofa_points += 1
     
     # Sepsis-3: If 2 or more qSOFA criteria are met, urgency is CRITICAL
-    if score >= 75 or qsofa_points >= 2:
+    if score > 75 or qsofa_points >= 2:
         return {
-            'level': 'CRITICAL',
+            'level': 'EMERGENCY',
             'timeframe': 'Within 15 minutes',
             'priority': 'High',
             'color': 'red'
