@@ -7,7 +7,7 @@ def calculate_risk_score(data):
     if temp > 39.5 or lactate > 4.0:
         score = 85.0
     elif temp > 38.5 or lactate > 2.5:
-        score = 60.0
+        score = 71.0 # Drive risk above High alert threshold (>70%)
     
     return min(max(float(score), 0.0), 100.0)
 

@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import time
 from datetime import datetime, timedelta
-from utils.risk_calculator import get_risk_category, get_risk_color, generate_risk_recommendations
+from utils.risk_calculator import get_risk_category, get_risk_color, generate_risk_recommendations, get_sepsis_protocol
 from utils.data_processing import detect_trends, calculate_vital_signs_scores
-from components.alerts import render_quick_actions
+from components.alerts import get_gemini_recommendations
 
 def render_patient_dashboard(patient_records):
     """
@@ -41,7 +42,81 @@ def render_patient_dashboard(patient_records):
     render_clinical_recommendations(latest_record)
     
     st.divider()
-    render_quick_actions(latest_record.to_dict())
+    render_dashboard_actions(latest_record.to_dict())
+
+def render_dashboard_actions(patient_data):
+    """Render unique dashboard intervention buttons and handle persistent UI state."""
+    st.markdown("### ⚡ Clinical Interventions")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        if st.button("📞 Call MD", key='dash_call_physician', use_container_width=True):
+            st.session_state.show_phys_card = not st.session_state.show_phys_card
+            
+    with col2:
+        if st.button("🔄 Re-Lactate", key='dash_repeat_lactate', use_container_width=True):
+            predictor = st.session_state.sepsis_model
+            updated_risk = predictor.predict_risk(patient_data)
+            if not isinstance(updated_risk, str):
+                pid = patient_data.get('patient_id')
+                df = st.session_state.patient_data
+                p_indices = df[df['patient_id'] == pid].index
+                if not p_indices.empty:
+                    st.session_state.patient_data.at[p_indices[-1], 'risk_score'] = updated_risk
+                    st.session_state.patient_data.at[p_indices[-1], 'risk_category'] = get_risk_category(updated_risk)
+                    st.toast(f"Risk Updated: {updated_risk:.1f}%", icon="🔄")
+                    time.sleep(0.5)
+                    st.rerun()
+            
+    with col3:
+        if st.button("✨ AI Recs", key='dash_view_recommendations_v2', use_container_width=True):
+            st.session_state.ready_to_show_ai = not st.session_state.get('ready_to_show_ai', False)
+            
+    with col4:
+        if st.button("💊 Protocol", key='dash_sepsis_protocol', use_container_width=True):
+            st.session_state.show_protocol = not st.session_state.show_protocol
+            
+    with col5:
+        if st.button("❓ Help", key='dash_help', use_container_width=True):
+            st.session_state.show_help = not st.session_state.show_help
+
+    # --- Persistent UI Elements ---
+    if st.session_state.show_phys_card:
+        with st.container(border=True):
+            st.error("🆘 **EMERGENCY CONTACT**")
+            st.markdown(f"""
+            **On-Call Intensivist**: Dr. Kumar  
+            **Unit**: Medical ICU  
+            **Direct Link**: [📞 Call Now](tel:+91XXXXXXXXXX)
+            """)
+            st.text_area("Physician Notes", key="dash_phys_notes_input", placeholder="Log conversation or instructions here...")
+            if st.button("Close Contact Card", key="dash_close_phys_card"):
+                st.session_state.show_phys_card = False
+                st.rerun()
+
+    if st.session_state.get('ready_to_show_ai', False):
+        vitals_summary = {k: v for k, v in patient_data.items() if k in 
+                          ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'lactate', 'wbc_count']}
+        with st.spinner("Consulting AI Specialist (Gemini 1.5 Flash)..."):
+            recommendations = get_gemini_recommendations(vitals_summary)
+            st.info(f"💡 **AI Clinical Insights**:\n\n{recommendations}")
+        if st.button("Dismiss AI Recommendations", key="dash_dismiss_ai_recs"):
+            st.session_state.ready_to_show_ai = False
+            st.rerun()
+
+    if st.session_state.show_protocol:
+        with st.expander("📖 Sepsis-3 Guidelines", expanded=True):
+            st.markdown(get_sepsis_protocol())
+            if st.button("Close Protocol View", key="dash_close_protocol"):
+                st.session_state.show_protocol = False
+                st.rerun()
+
+    if st.session_state.show_help:
+        st.info("💡 **Dashboard Help**: This view provides real-time risk tracking. Buttons in the grid allow for immediate clinical interventions.")
+        if st.button("Close Help", key="dash_close_help_text"):
+            st.session_state.show_help = False
+            st.rerun()
 
 def render_current_status(latest_record):
     """Render current patient status with key metrics."""

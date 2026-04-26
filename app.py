@@ -36,7 +36,7 @@ if 'current_patient_id' not in st.session_state:
     st.session_state.current_patient_id = None
 
 # Initialize button states globally
-for key in ['show_phys_card', 'show_ai_rec', 'show_protocol', 'show_help']:
+for key in ['show_phys_card', 'show_ai_rec', 'show_protocol', 'show_help', 'ready_to_show_ai']:
     if key not in st.session_state:
         st.session_state[key] = False
 
@@ -57,6 +57,10 @@ def main():
         "Select Page",
         ["Patient Input", "Risk Dashboard", "Historical Analysis", "System Status"]
     )
+
+    # Reset AI flag when navigating away from Dashboard to prevent leakage
+    if page != "Risk Dashboard":
+        st.session_state.ready_to_show_ai = False
 
     # System Pulse Summary in Sidebar
     if not st.session_state.patient_data.empty:
@@ -80,6 +84,11 @@ def main():
 def render_patient_input_page():
     st.header("📝 Patient Data Input")
     
+    # Fix Page Leakage: Cleanup AI and Dashboard states to prevent them from appearing on the input page
+    for key in ['show_rec', 'ai_output', 'ready_to_show_ai', 'show_ai_rec', 'show_phys_card', 'show_protocol', 'show_help']:
+        if key in st.session_state:
+            st.session_state[key] = False
+    
     col1, col2 = st.columns([2, 1])
     
     with col1:
@@ -93,7 +102,7 @@ def render_patient_input_page():
         st.session_state.current_patient_id = patient_id
         patient_data = render_patient_input_form()
         
-        if patient_data and st.button("Submit Patient Data", type="primary"):
+        if patient_data: # Form submitted via st.form_submit_button
             validation_result = validate_patient_data(patient_data)
             
             if validation_result['valid']:

@@ -8,196 +8,81 @@ def render_patient_input_form():
     Returns:
         dict: Patient data if form is complete, None otherwise
     """
-    st.subheader("Vital Signs & Laboratory Values")
-    
-    # Create columns for organized layout
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Vital Signs**")
+    with st.form("patient_data_form"):
+        st.subheader("Vital Signs & Laboratory Values")
+        # Create columns for organized layout
+        col1, col2 = st.columns(2)
         
-        # Temperature
-        temperature = st.number_input(
-            "Temperature (°C)",
-            min_value=30.0,
-            max_value=45.0,
-            value=37.0,
-            step=0.1,
-            help="Normal range: 36.1-37.2°C"
-        )
+        with col1:
+            st.markdown("**Vital Signs**")
+            temperature = st.number_input("Temperature (°C)", min_value=30.0, max_value=45.0, value=37.0, step=0.1)
+            heart_rate = st.number_input("Heart Rate (bpm)", min_value=20, max_value=250, value=80, step=1)
+            respiratory_rate = st.number_input("Respiratory Rate (breaths/min)", min_value=5, max_value=60, value=16, step=1)
+            
+            st.markdown("**Blood Pressure (mmHg)**")
+            col_sys, col_dia = st.columns(2)
+            with col_sys:
+                systolic_bp = st.number_input("Systolic", min_value=50, max_value=250, value=120, step=1)
+            with col_dia:
+                diastolic_bp = st.number_input("Diastolic", min_value=30, max_value=150, value=70, step=1)
         
-        # Heart Rate
-        heart_rate = st.number_input(
-            "Heart Rate (bpm)",
-            min_value=20,
-            max_value=250,
-            value=80,
-            step=1,
-            help="Normal range: 60-100 bpm"
-        )
+        with col2:
+            st.markdown("**Laboratory Values**")
+            wbc_count = st.number_input("WBC Count (× 10³/μL)", min_value=0.1, max_value=50.0, value=8.0, step=0.1)
+            lactate = st.number_input("Lactate (mmol/L)", min_value=0.1, max_value=20.0, value=1.5, step=0.1)
+            
+            st.markdown("**Patient Demographics**")
+            age = st.number_input("Age (years)", min_value=0, max_value=120, value=65, step=1)
+            gender = st.selectbox("Gender", options=["M", "F"], index=0)
+    
+        # Additional clinical information
+        st.subheader("Additional Clinical Information")
+        col3, col4 = st.columns(2)
         
-        # Respiratory Rate
-        respiratory_rate = st.number_input(
-            "Respiratory Rate (breaths/min)",
-            min_value=5,
-            max_value=60,
-            value=16,
-            step=1,
-            help="Normal range: 12-20 breaths/min"
-        )
+        with col3:
+            clinical_notes = st.text_area("Clinical Notes", placeholder="Any relevant clinical observations...", height=100)
         
-    # Blood Pressure
-    st.markdown("**Blood Pressure (mmHg)**")
-    col_sys, col_dia = st.columns(2)
-    with col_sys:
-        systolic_bp = st.number_input(
-                "Systolic",
-                min_value=50,
-                max_value=250,
-                value=120,
-                step=1
-            )
-    with col_dia:
-        diastolic_bp = st.number_input(
-                "Diastolic",
-                min_value=30,
-                max_value=150,
-                value=70,
-                step=1
-            )
-    
-    with col2:
-        st.markdown("**Laboratory Values**")
+        with col4:
+            st.markdown("**Risk Factors**")
+            immunocompromised = st.checkbox("Immunocompromised")
+            recent_surgery = st.checkbox("Recent Surgery (< 30 days)")
+            diabetes = st.checkbox("Diabetes")
+            chronic_kidney_disease = st.checkbox("Chronic Kidney Disease")
+            copd = st.checkbox("COPD")
+
+        submitted = st.form_submit_button("Submit Patient Data", type="primary")
         
-        # White Blood Cell Count
-        wbc_count = st.number_input(
-            "WBC Count (× 10³/μL)",
-            min_value=0.1,
-            max_value=50.0,
-            value=8.0,
-            step=0.1,
-            help="Normal range: 4.5-11.0 × 10³/μL"
-        )
-        
-        # Lactate
-        lactate = st.number_input(
-            "Lactate (mmol/L)",
-            min_value=0.1,
-            max_value=20.0,
-            value=1.5,
-            step=0.1,
-            help="Normal range: 0.5-2.2 mmol/L"
-        )
-        
-        st.markdown("**Patient Demographics**")
-        
-        # Age
-        age = st.number_input(
-            "Age (years)",
-            min_value=0,
-            max_value=120,
-            value=65,
-            step=1
-        )
-        
-        # Gender
-        gender = st.selectbox(
-            "Gender",
-            options=["M", "F"],
-            index=0
-        )
+        if submitted:
+            if systolic_bp <= diastolic_bp:
+                st.error("⚠️ Systolic blood pressure must be greater than diastolic blood pressure")
+                return None
+                
+            patient_data = {
+                'temperature': temperature,
+                'heart_rate': heart_rate,
+                'respiratory_rate': respiratory_rate,
+                'systolic_bp': systolic_bp,
+                'diastolic_bp': diastolic_bp,
+                'wbc_count': wbc_count,
+                'lactate': lactate,
+                'age': age,
+                'gender': gender,
+                'clinical_notes': clinical_notes,
+                'risk_factors': {
+                    'immunocompromised': immunocompromised,
+                    'recent_surgery': recent_surgery,
+                    'diabetes': diabetes,
+                    'chronic_kidney_disease': chronic_kidney_disease,
+                    'copd': copd
+                }
+            }
+            return normalize_vitals(patient_data)
     
-    # Additional clinical information
-    st.subheader("Additional Clinical Information")
-    
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        # Clinical notes
-        clinical_notes = st.text_area(
-            "Clinical Notes (Optional)",
-            placeholder="Any relevant clinical observations...",
-            height=100
-        )
-    
-    with col4:
-        # Risk factors
-        st.markdown("**Risk Factors** (Optional)")
-        
-        immunocompromised = st.checkbox("Immunocompromised")
-        recent_surgery = st.checkbox("Recent Surgery (< 30 days)")
-        diabetes = st.checkbox("Diabetes")
-        chronic_kidney_disease = st.checkbox("Chronic Kidney Disease")
-        copd = st.checkbox("COPD")
-    
-    # Validate blood pressure relationship
-    if systolic_bp <= diastolic_bp:
-        st.error("⚠️ Systolic blood pressure must be greater than diastolic blood pressure")
-        return None
-    
-    # Compile patient data
-    patient_data = {
-        'temperature': temperature,
-        'heart_rate': heart_rate,
-        'respiratory_rate': respiratory_rate,
-        'systolic_bp': systolic_bp,
-        'diastolic_bp': diastolic_bp,
-        'wbc_count': wbc_count,
-        'lactate': lactate,
-        'age': age,
-        'gender': gender,
-        'clinical_notes': clinical_notes,
-        'risk_factors': {
-            'immunocompromised': immunocompromised,
-            'recent_surgery': recent_surgery,
-            'diabetes': diabetes,
-            'chronic_kidney_disease': chronic_kidney_disease,
-            'copd': copd
-        }
-    }
-    
-    # Normalize the data
-    normalized_data = normalize_vitals(patient_data)
-    
-    return normalized_data
+    return None
 
 def render_quick_input_form():
-    """
-    Render a simplified quick input form for urgent cases.
-    
-    Returns:
-        dict: Essential patient data
-    """
-    st.subheader("⚡ Quick Assessment")
-    st.markdown("*Essential vitals for rapid risk assessment*")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        temp = st.number_input("Temp (°C)", value=37.0, step=0.1, key="quick_temp")
-        hr = st.number_input("HR (bpm)", value=80, step=1, key="quick_hr")
-    
-    with col2:
-        rr = st.number_input("RR (/min)", value=16, step=1, key="quick_rr")
-        systolic = st.number_input("SBP (mmHg)", value=120, step=1, key="quick_sbp")
-    
-    with col3:
-        lactate = st.number_input("Lactate (mmol/L)", value=1.5, step=0.1, key="quick_lactate")
-        wbc = st.number_input("WBC (×10³)", value=8.0, step=0.1, key="quick_wbc")
-    
-    quick_data = {
-        'temperature': temp,
-        'heart_rate': hr,
-        'respiratory_rate': rr,
-        'systolic_bp': systolic,
-        'diastolic_bp': systolic - 40,  # Estimate diastolic
-        'wbc_count': wbc,
-        'lactate': lactate,
-        'age': 65,  # Default age
-        'gender': 'M'  # Default gender
-    }
-    
-    return normalize_vitals(quick_data)
+    # Function removed as per Task requirement: Quick actions belong only on Dashboard.
+    pass
 
 def render_input_validation_feedback(patient_data):
     """
