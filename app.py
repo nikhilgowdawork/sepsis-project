@@ -8,8 +8,8 @@ import time
 
 # Import custom modules
 from models.sepsis_model import SepsisPredictor
-from utils.data_processing import validate_patient_data, normalize_vitals
-from utils.risk_calculator import calculate_risk_score, get_risk_category
+from utils.data_processing import validate_patient_data, normalize_vitals # Unused import: normalize_vitals
+from utils.risk_calculator import calculate_risk_score, get_risk_category, get_risk_color
 from components.patient_input import render_patient_input_form
 from components.dashboard import render_patient_dashboard
 from components.alerts import render_alert_system
@@ -19,7 +19,7 @@ st.set_page_config(
     page_title="ICU Sepsis Risk Monitor",
     page_icon="🏥",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Medical disclaimer
@@ -81,57 +81,47 @@ def render_patient_input_page():
         # Patient identification
         st.subheader("Patient Information")
         patient_id = st.text_input("Patient ID", 
-                                 value=st.session_state.current_patient_id if st.session_state.current_patient_id else "",
-                                 placeholder="Enter unique patient identifier")
+                                value=st.session_state.current_patient_id if st.session_state.current_patient_id else "",
+                                placeholder="Enter unique patient identifier")
         
     if patient_id:
-            st.session_state.current_patient_id = patient_id
+        st.session_state.current_patient_id = patient_id
+        patient_data = render_patient_input_form()
+        
+        if patient_data and st.button("Submit Patient Data", type="primary"):
+            validation_result = validate_patient_data(patient_data)
             
-            # Render patient input form
-            patient_data = render_patient_input_form()
-            
-            if patient_data and st.button("Submit Patient Data", type="primary"):
-                # Validate data
-                validation_result = validate_patient_data(patient_data)
+            if validation_result['valid']:
+                patient_data['timestamp'] = datetime.now()
+                patient_data['patient_id'] = patient_id
                 
-                if validation_result['valid']:
-                    # Add timestamp and patient ID
-                    patient_data['timestamp'] = datetime.now()
-                    patient_data['patient_id'] = patient_id
-                    
-                    # Calculate risk score with reliability fallback
-                    try:
-                        risk_score = st.session_state.sepsis_model.predict_risk(patient_data)
-                        # Handle physical impossibility warnings
-                        if isinstance(risk_score, str):
-                            st.error(risk_score)
-                            return
-                    except Exception:
-                        from utils.risk_calculator import calculate_risk_score as manual_calc
-                        risk_score = manual_calc(patient_data) 
-                        st.warning("⚠️ ML Model Unavailable. Using Manual Clinical Calculation.")
-
-                    patient_data['risk_score'] = risk_score
-                    patient_data['risk_category'] = get_risk_category(risk_score)
-                    
-                    # Store data
-                    if st.session_state.patient_data.empty:
-                        st.session_state.patient_data = pd.DataFrame([patient_data])
-                    else:
-                        st.session_state.patient_data = pd.concat([
-                            st.session_state.patient_data, 
-                            pd.DataFrame([patient_data])
-                        ], ignore_index=True)
-                    
-                    st.success(f"✅ Data submitted successfully! Risk Score: {risk_score:.1f}%")
-                    
-                    # Show immediate risk assessment
-                    render_immediate_risk_assessment(patient_data)
-                    
+                try:
+                    risk_score = st.session_state.sepsis_model.predict_risk(patient_data)
+                    if isinstance(risk_score, str):
+                        st.error(risk_score)
+                        return
+                except Exception:
+                    risk_score = calculate_risk_score(patient_data) 
+                    st.warning("⚠️ ML Model Unavailable. Using Manual Clinical Calculation.")
+                
+                st.session_state.risk_score = risk_score
+                patient_data['risk_score'] = risk_score
+                patient_data['risk_category'] = get_risk_category(risk_score)
+                
+                if st.session_state.patient_data.empty:
+                    st.session_state.patient_data = pd.DataFrame([patient_data])
                 else:
-                    st.error("❌ Data validation failed:")
-                    for error in validation_result['errors']:
-                        st.error(f"• {error}")
+                    st.session_state.patient_data = pd.concat([
+                        st.session_state.patient_data, 
+                        pd.DataFrame([patient_data])
+                    ], ignore_index=True)
+                
+                st.success(f"✅ Data submitted successfully! Risk Score: {risk_score:.1f}%")
+                render_immediate_risk_assessment(patient_data)
+            else:
+                st.error("❌ Data validation failed:")
+                for error in validation_result['errors']:
+                    st.error(f"• {error}")
     
     with col2:
         st.subheader("Quick Reference")
@@ -157,18 +147,18 @@ def render_immediate_risk_assessment(patient_data):
     with col1:
         # Risk score gauge
         fig = go.Figure(go.Indicator(
-            mode = "gauge+number+delta",
+            mode = "gauge+number",
             value = risk_score,
             domain = {'x': [0, 1], 'y': [0, 1]},
             title = {'text': "Sepsis Risk Score"},
             gauge = {
                 'axis': {'range': [None, 100]},
-                'bar': {'color': "darkblue"},
+                'bar': {'color': get_risk_color(risk_score)},
                 'steps': [
-                    {'range': [0, 25], 'color': "green"},
+                    {'range': [0, 25], 'color': "lightgreen"},
                     {'range': [25, 50], 'color': "yellow"},
                     {'range': [50, 75], 'color': "orange"},
-                    {'range': [75, 100], 'color': "red"}
+                    {'range': [75, 100], 'color': "lightcoral"}
                 ],
                 'threshold': {
                     'line': {'color': "red", 'width': 4},
@@ -201,16 +191,22 @@ def render_dashboard_page():
     selected_patient = st.selectbox("Select Patient", patients)
     
     if selected_patient:
+        # Update risk score for the current vitals before rendering
+        idx = st.session_state.patient_data[st.session_state.patient_data['patient_id'] == selected_patient].index[-1]
+        current_vitals = st.session_state.patient_data.loc[idx].to_dict()
+        
+        try:
+            updated_score = st.session_state.sepsis_model.predict_risk(current_vitals)
+            if not isinstance(updated_score, str):
+                st.session_state.patient_data.at[idx, 'risk_score'] = updated_score
+                st.session_state.patient_data.at[idx, 'risk_category'] = get_risk_category(updated_score)
+        except Exception:
+            pass
+            
+        # Now fetch records after the potential update
         patient_records = st.session_state.patient_data[
             st.session_state.patient_data['patient_id'] == selected_patient
         ].sort_values('timestamp')
-        
-        # Explicitly pass current vitals to predictor on refresh
-        current_vitals = patient_records.iloc[-1].to_dict()
-        try:
-            st.session_state.sepsis_model.predict_risk(current_vitals)
-        except Exception:
-            pass
         
         render_patient_dashboard(patient_records)
 
@@ -245,6 +241,10 @@ def render_historical_page():
             filtered_data = st.session_state.patient_data[
                 st.session_state.patient_data['patient_id'].isin(patients)
             ]
+            
+            # Apply time range filter
+            cutoff = datetime.now() - timedelta(hours=time_range)
+            filtered_data = filtered_data[filtered_data['timestamp'] > cutoff]
             
             # Time series plot
             fig = px.line(

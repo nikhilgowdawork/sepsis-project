@@ -164,12 +164,12 @@ def calculate_vital_signs_scores(patient_data: Dict) -> Dict:
     systolic = patient_data.get('systolic_bp', 120)
     if 90 <= systolic <= 140:
         scores['bp_score'] = 0
-    elif 80 <= systolic < 90 or 141 <= systolic <= 160:
+    elif 141 <= systolic <= 160:
         scores['bp_score'] = 1
-    elif 70 <= systolic < 80 or 161 <= systolic <= 180:
+    elif 161 <= systolic <= 180:
         scores['bp_score'] = 2
     else:
-        scores['bp_score'] = 3
+        scores['bp_score'] = 3 # Includes Hypotension < 90
     
     # WBC count score
     wbc = patient_data.get('wbc_count', 8.0)
@@ -265,16 +265,7 @@ def detect_trends(patient_history: pd.DataFrame, window_size: int = 3) -> Dict:
     
     return {'trends': trends, 'alerts': alerts}
 
-def calculate_risk_score(data):
-    """Deprioritized in favor of sepsis_model.predict_risk"""
-    return 0.0
-
 def get_risk_category(score):
-    if score > 75:
-        return "Critical Risk"
-    elif score > 50:
-        return "High Risk"
-    elif score > 25:
-        return "Moderate Risk"
-    else:
-        return "Low Risk"
+    """Imported from utils.risk_calculator to maintain single source of truth."""
+    from utils.risk_calculator import get_risk_category as real_get_cat
+    return real_get_cat(score)

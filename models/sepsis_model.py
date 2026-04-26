@@ -64,7 +64,7 @@ class SepsisPredictor:
         dummy_data = np.zeros((n_samples, len(self.feature_names)))
         
         # Assign Realistic Clinical Ranges
-        dummy_data[:, 0] = np.random.normal(37.0, 1.5, n_samples)  # temperature
+        dummy_data[:, 0] = np.random.normal(37.0, 0.6, n_samples)  # temperature (tightened for outlier detection)
         dummy_data[:, 1] = np.random.normal(80, 20, n_samples)     # heart_rate
         dummy_data[:, 2] = np.random.normal(16, 4, n_samples)      # respiratory_rate
         dummy_data[:, 3] = np.random.normal(120, 20, n_samples)    # systolic_bp
@@ -80,8 +80,12 @@ class SepsisPredictor:
         lactate = dummy_data[:, 6]
         sbp = dummy_data[:, 3]
         
-        # Logic: (High Temp AND High HR) OR (High Lactate AND Low BP)
-        dummy_labels = ((temp > 38.0) & (hr > 100.0) | (lactate > 2.0) & (sbp < 100.0)).astype(int)
+        # Base labels for correlated sepsis signs
+        dummy_labels = ((temp > 38.5) & (hr > 100.0) | (lactate > 2.0) & (sbp < 100.0)).astype(int)
+
+        # Update: Ensure Temp > 38 is Sepsis at least 80% of the time (Fixes "Blind AI")
+        temp_mask = temp > 38.0
+        dummy_labels[temp_mask] = np.random.binomial(1, 0.8, np.sum(temp_mask))
 
         # 3. Handle Scaler Persistence
         if os.path.exists(scaler_path):
@@ -182,11 +186,12 @@ class SepsisPredictor:
         if rr > 22: adjusted_risk += 8
         if wbc > 12.0 or wbc < 4.0: adjusted_risk += 12
 
-        # 2. SAFETY OVERRIDES (Clinical Floors)
-        if lactate > 4.0:
-            adjusted_risk = max(adjusted_risk, 85.0)  # Cannot be below Critical
-        elif lactate > 2.2:
-            adjusted_risk = max(adjusted_risk, 50.0)  # Cannot be below High
+        # 2. SAFETY OVERRIDES (Clinical Safety Floors)
+        if temp > 39.5 or lactate > 4.0:
+            adjusted_risk = max(adjusted_risk, 85.0)
+        elif temp > 38.5 or lactate > 2.5:
+            adjusted_risk = max(adjusted_risk, 60.0)
+
         if sbp < 90:
             adjusted_risk = max(adjusted_risk, 75.0)  # Hypotension Floor
             

@@ -4,29 +4,31 @@ def calculate_risk_score(data):
     lactate = data.get('lactate', 1.5)
     
     score = 0.0
-    if lactate > 3.0 or temp > 39.5:
+    if temp > 39.5 or lactate > 4.0:
         score = 85.0
+    elif temp > 38.5 or lactate > 2.5:
+        score = 60.0
     
     return min(max(float(score), 0.0), 100.0)
 
 
 def get_risk_category(score):
-    if score > 75:
+    if score >= 75:
         return "Critical Risk"
-    elif score > 50:
+    elif score >= 50:
         return "High Risk"
-    elif score > 25:
+    elif score >= 25:
         return "Moderate Risk"
     else:
         return "Low Risk"
 
 
 def get_risk_color(score):
-    if score > 75:
+    if score >= 75:
         return "red"
-    elif score > 50:
+    elif score >= 50:
         return "orange"
-    elif score > 25:
+    elif score >= 25:
         return "yellow"
     else:
         return "green"
@@ -73,7 +75,7 @@ def calculate_intervention_urgency(score, data=None):
         if data.get('systolic_bp', 120) <= 100: qsofa_points += 1
     
     # Sepsis-3: If 2 or more qSOFA criteria are met, urgency is CRITICAL
-    if score > 75 or qsofa_points >= 2:
+    if score >= 75 or qsofa_points >= 2:
         return {
             'level': 'EMERGENCY',
             'timeframe': 'Within 15 minutes',
