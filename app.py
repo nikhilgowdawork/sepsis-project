@@ -35,6 +35,11 @@ if 'patient_data' not in st.session_state:
 if 'current_patient_id' not in st.session_state:
     st.session_state.current_patient_id = None
 
+# Initialize button states globally
+for key in ['show_phys_card', 'show_ai_rec', 'show_protocol', 'show_help']:
+    if key not in st.session_state:
+        st.session_state[key] = False
+
 @st.cache_resource
 def load_sepsis_model():
     return SepsisPredictor()

@@ -372,6 +372,6 @@ def render_patient_summary_card(patient_record):
             <p><strong>Risk Score:</strong> {risk_score:.1f}% ({patient_record['risk_category']})</p>
             <p><strong>Last Assessment:</strong> {patient_record['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}</p>
             <p><strong>Key Vitals:</strong> T: {patient_record['temperature']:.1f}°C, 
-               HR: {patient_record['heart_rate']}, BP: {patient_record['systolic_bp']}/{patient_record['diastolic_bp']}</p>
+            HR: {patient_record['heart_rate']}, BP: {patient_record['systolic_bp']}/{patient_record['diastolic_bp']}</p>
         </div>
         """, unsafe_allow_html=True)

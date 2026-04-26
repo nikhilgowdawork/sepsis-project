@@ -42,6 +42,11 @@ def validate_patient_data(patient_data: Dict) -> Dict:
     for field, min_val, max_val, error_msg in validations:
         value = patient_data.get(field)
         if value is not None:
+            # Check for zero values in essential vitals
+            if field in ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'diastolic_bp'] and float(value) == 0:
+                errors.append(f"Invalid Input: {field.replace('_', ' ').title()} cannot be zero.")
+                continue
+                
             try:
                 value = float(value)
                 if not (min_val <= value <= max_val):

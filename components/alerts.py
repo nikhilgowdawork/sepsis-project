@@ -14,7 +14,7 @@ def get_gemini_recommendations(vitals_data):
             
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Act as a senior intensivist. Given these vitals {vitals_data}, provide 3 immediate clinical steps for this patient. Keep it concise."
+        prompt = f"Analyze these vitals {vitals_data} and provide 3 immediate interventions."
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
@@ -218,64 +218,90 @@ def render_quick_actions(patient_data):
     """Render quick action buttons for common interventions."""
     st.markdown("### ⚡ Quick Actions")
     
+    # Initialize button states
+    for key in ['show_phys_card', 'show_ai_rec', 'show_protocol', 'show_help']:
+        if key not in st.session_state:
+            st.session_state[key] = False
+
     risk_score = patient_data.get('risk_score', 0)
-    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("📞 Call Physician", type="secondary"):
-            st.session_state.show_phys_card = True
+        if st.button("📞 Call Physician", type="secondary", use_container_width=True):
+            st.session_state.show_phys_card = not st.session_state.show_phys_card
         
-        if st.session_state.get('show_phys_card'):
-            st.error("🆘 **EMERGENCY CONTACT**")
-            st.markdown("""
-            **On-Call Intensivist**: Dr. Kumar  
-            **Unit**: Medical ICU  
-            [📞 Click to Dial: +91XXXXXXXXXX](tel:+91XXXXXXXXXX)
-            """)
-            if st.button("Close Contact Card"):
-                st.session_state.show_phys_card = False
-        
-        if risk_score >= 50 and st.button("🩸 Order Blood Cultures", type="secondary"):
+        if risk_score >= 50 and st.button("🩸 Order Blood Cultures", type="secondary", use_container_width=True):
             st.success("✅ Blood culture order placed")
+
+        if st.button("❓ System Help", type="secondary", use_container_width=True):
+            st.session_state.show_help = not st.session_state.show_help
     
     with col2:
-        if st.button("✨ View Recommendations", type="primary"):
-             vitals_summary = {k: v for k, v in patient_data.items() if k in 
-                              ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'lactate', 'wbc_count']}
-             with st.spinner("Consulting AI Specialist..."):
-                 recommendations = get_gemini_recommendations(vitals_summary)
-                 st.info(f"💡 **Senior Intensivist Recommendations**:\n\n{recommendations}")
+        if st.button("✨ View Recommendations", type="primary", use_container_width=True):
+            st.session_state.show_ai_rec = not st.session_state.show_ai_rec
 
-        if st.button("💊 Sepsis Protocol", type="primary"):
-             with st.expander("📖 Sepsis-3 Guidelines", expanded=True):
-                 st.markdown(get_sepsis_protocol())
+        if st.button("💊 Sepsis Protocol", type="primary", use_container_width=True):
+            st.session_state.show_protocol = not st.session_state.show_protocol
         
         systolic = patient_data.get('systolic_bp', 120)
-        if systolic < 90 and st.button("💧 Fluid Bolus", type="secondary"):
+        if systolic < 90 and st.button("💧 Fluid Bolus", type="secondary", use_container_width=True):
             st.success("✅ Fluid bolus order placed")
     
     with col3:
-        if st.button("📊 Additional Labs", type="secondary"):
+        if st.button("📊 Additional Labs", type="secondary", use_container_width=True):
             st.success("✅ Lab orders placed")
         
-        lactate = patient_data.get('lactate', 1.5)
-        if lactate > 2.2 and st.button("🔄 Repeat Lactate", type="secondary"):
-            # Logic override: re-run prediction and update session state immediately
+        if st.button("🔄 Repeat Lactate", type="secondary", use_container_width=True):
             predictor = st.session_state.sepsis_model
             updated_risk = predictor.predict_risk(patient_data)
             
             if not isinstance(updated_risk, str):
-                if not st.session_state.patient_data.empty:
-                    pid = patient_data.get('patient_id')
-                    # Find indices for this patient
-                    p_indices = st.session_state.patient_data[st.session_state.patient_data['patient_id'] == pid].index
-                    if not p_indices.empty:
-                        # Update the latest entry for real-time dashboard reflecting
-                        st.session_state.patient_data.at[p_indices[-1], 'risk_score'] = updated_risk
-                        st.toast(f"Real-time Re-assessment: {updated_risk:.1f}% Risk", icon="🔄")
-                        time.sleep(1)
-                        st.rerun()
+                pid = patient_data.get('patient_id')
+                # Find the latest index for this patient in the session state dataframe
+                p_indices = st.session_state.patient_data[st.session_state.patient_data['patient_id'] == pid].index
+                if not p_indices.empty:
+                    st.session_state.patient_data.at[p_indices[-1], 'risk_score'] = updated_risk
+                    st.session_state.patient_data.at[p_indices[-1], 'risk_category'] = get_risk_category(updated_risk)
+                    st.toast(f"Risk Updated: {updated_risk:.1f}%", icon="🔄")
+                    time.sleep(0.5)
+                    st.rerun()
+
+    # --- Persistent UI elements based on state ---
+    if st.session_state.show_phys_card:
+        with st.container(border=True):
+            st.error("🆘 **EMERGENCY CONTACT**")
+            st.markdown("""
+            **On-Call Intensivist**: Dr. Kumar  
+            **Unit**: Medical ICU  
+            **Direct Link**: [📞 Call Now](tel:+91XXXXXXXXXX)
+            """)
+            st.text_area("Physician Notes", placeholder="Log conversation or instructions here...")
+            if st.button("Close Contact Card"):
+                st.session_state.show_phys_card = False
+                st.rerun()
+
+    if st.session_state.show_ai_rec:
+        vitals_summary = {k: v for k, v in patient_data.items() if k in 
+                          ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'lactate', 'wbc_count']}
+        with st.spinner("Consulting AI Specialist..."):
+            recommendations = get_gemini_recommendations(vitals_summary)
+            st.info(f"💡 **AI Clinical Insights**:\n\n{recommendations}")
+        if st.button("Dismiss AI"):
+            st.session_state.show_ai_rec = False
+            st.rerun()
+
+    if st.session_state.show_protocol:
+        with st.expander("📖 Sepsis-3 Guidelines", expanded=True):
+            st.markdown(get_sepsis_protocol())
+            if st.button("Close Protocol"):
+                st.session_state.show_protocol = False
+                st.rerun()
+
+    if st.session_state.show_help:
+        st.info("💡 **How to use**: This dashboard provides real-time sepsis risk assessment. Use 'Repeat Lactate' to refresh scores based on current values. AI Recommendations are powered by Gemini 1.5 Flash.")
+        if st.button("Close Help"):
+            st.session_state.show_help = False
+            st.rerun()
 
 def render_notification_center():
     """Render a notification center for alerts and reminders."""

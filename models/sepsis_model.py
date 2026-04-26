@@ -103,6 +103,10 @@ class SepsisPredictor:
         temp = patient_data.get('temperature', 0)
         sbp = patient_data.get('systolic_bp', 120)
 
+        # Handle zero vitals
+        if any(patient_data.get(k) == 0 for k in ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'diastolic_bp']):
+            return False, "Invalid Input: Vital signs cannot be zero."
+
         if hr > 300 or temp > 50:
             return False, "⚠️ Physically impossible vitals detected (HR > 300 or Temp > 50). Assessment halted."
 
@@ -190,7 +194,7 @@ class SepsisPredictor:
         if temp > 39.5 or lactate > 4.0:
             adjusted_risk = max(adjusted_risk, 85.0)
         elif temp > 38.5 or lactate > 2.5:
-            adjusted_risk = max(adjusted_risk, 60.0)
+            adjusted_risk = max(adjusted_risk, 71.0) # Ensure sync with High Risk alert (>70%)
 
         if sbp < 90:
             adjusted_risk = max(adjusted_risk, 75.0)  # Hypotension Floor
