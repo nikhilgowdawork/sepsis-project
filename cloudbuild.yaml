@@ -30,7 +30,7 @@ steps:
       - '--timeout'
       - '300s'
       - '--set-env-vars'
-      - 'GOOGLE_API_KEY=AIzaSyDFKc6DCTSSkuwmAAe7VYzUaJce4mdoxyw'
+      - 'GOOGLE_API_KEY=$GOOGLE_API_KEY'
 
 images:
   - 'gcr.io/$PROJECT_ID/sepsis-predictor'
