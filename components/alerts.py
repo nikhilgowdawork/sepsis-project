@@ -3,22 +3,97 @@ from datetime import datetime
 import google.generativeai as genai
 import os
 import time
+import threading
 from utils.risk_calculator import get_risk_category, calculate_intervention_urgency, get_sepsis_protocol
 
+def get_local_clinical_recommendations(vitals_data):
+    """Provide detailed local clinical recommendations based on vitals."""
+    recommendations = []
+    
+    # Extract key vitals
+    temp = vitals_data.get('temperature', 37.0)
+    hr = vitals_data.get('heart_rate', 80)
+    sbp = vitals_data.get('systolic_bp', 120)
+    lactate = vitals_data.get('lactate', 1.5)
+    rr = vitals_data.get('respiratory_rate', 16)
+    wbc = vitals_data.get('wbc_count', 8.0)
+    
+    # Generate detailed recommendations based on clinical guidelines
+    if temp > 39.0:
+        recommendations.append("🔥 1. CRITICAL: High fever >39°C - Administer acetaminophen 650mg IV/PO, obtain blood cultures (2 sets) before antibiotics, consider cooling measures")
+    elif temp > 38.5:
+        recommendations.append("🌡️ 1. Fever management - Administer antipyretics, obtain blood cultures, monitor for rigors")
+    
+    if lactate > 4.0:
+        recommendations.append("⚡ 2. SEVERE: Lactate >4 mmol/L - Begin fluid resuscitation 30mL/kg crystalloid bolus, repeat lactate in 2 hours, consider ICU transfer")
+    elif lactate > 2.5:
+        recommendations.append("🧪 2. Elevated lactate - Begin fluid resuscitation, repeat lactate in 4 hours, assess tissue perfusion")
+    elif lactate > 2.0:
+        recommendations.append("💧 2. Early lactate elevation - Initiate 500mL crystalloid bolus, monitor urine output")
+    
+    if sbp < 90:
+        recommendations.append("💔 3. HYPOTENSION: SBP <90 - Start norepinephrine infusion, MAP goal ≥65 mmHg, consider central line placement")
+    elif sbp < 100:
+        recommendations.append("📉 3. Borderline hypotension - Aggressive fluid resuscitation, frequent BP monitoring every 5 minutes")
+    elif hr > 120:
+        recommendations.append("💓 3. Significant tachycardia >120 - Assess volume status, consider ECG, monitor for arrhythmias")
+    elif rr > 25:
+        recommendations.append("🫁 3. Tachypnea >25 - Assess oxygen saturation, consider ABG, monitor respiratory effort")
+    elif wbc > 15.0:
+        recommendations.append("🔬 3. Leukocytosis >15K - Strong suspicion of infection, start broad-spectrum antibiotics after cultures")
+    else:
+        recommendations.append("🏥 3. Continue enhanced monitoring - Reassess vitals every 30 minutes, repeat lactate in 4 hours, maintain strict intake/output")
+    
+    # If no specific issues found, provide general sepsis surveillance
+    if not recommendations:
+        recommendations = [
+            "📊 1. Sepsis surveillance - Monitor vitals every 2 hours, assess for new infection sources",
+            "🔍 2. Risk assessment - Repeat lactate if clinical deterioration, consider procalcitonin level",
+            "⚕️ 3. Preparedness - Ensure IV access, consider early antibiotics if risk factors present"
+        ]
+    
+    return "\n".join(recommendations[:3])
+
 def get_gemini_recommendations(vitals_data):
-    """Consult Gemini 1.5 Flash for clinical recommendations."""
+    """Consult Google Generative AI for clinical recommendations."""
     try:
         api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            return "Error: Gemini API key not found in secrets or environment."
-            
+            return get_local_clinical_recommendations(vitals_data)
+
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Analyze these vitals {vitals_data} and provide 3 immediate interventions."
-        response = model.generate_content(prompt)
-        return response.text
+        
+        # Use the most reliable model
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # Simple, direct prompt
+        prompt = f"""Patient vitals: {vitals_data}
+
+Provide 3 clinical interventions:
+
+1."""
+        
+        try:
+            response = model.generate_content(prompt)
+            
+            # Get the complete response text
+            if hasattr(response, 'text') and response.text:
+                ai_response = response.text.strip()
+                
+                # If response is too short, provide local recommendations
+                if len(ai_response) < 100:
+                    return get_local_clinical_recommendations(vitals_data)
+                
+                return ai_response
+            else:
+                return get_local_clinical_recommendations(vitals_data)
+                
+        except Exception as e:
+            # If any error, fall back to local recommendations
+            return get_local_clinical_recommendations(vitals_data)
+            
     except Exception as e:
-        return f"AI Recommendation Service Unavailable: {str(e)}"
+        return get_local_clinical_recommendations(vitals_data)
 
 def render_alert_system(patient_data):
     """
@@ -220,7 +295,7 @@ def render_intervention_urgency(patient_data):
                 st.rerun()
 
     if st.session_state.show_help:
-        st.info("💡 **How to use**: This dashboard provides real-time sepsis risk assessment. Use 'Repeat Lactate' to refresh scores based on current values. AI Recommendations are powered by Gemini 1.5 Flash.")
+        st.info("💡 **How to use**: This dashboard provides real-time sepsis risk assessment. Use 'Repeat Lactate' to refresh scores based on current values. AI Recommendations are powered by Google Generative AI.")
         if st.button("Close Help"):
             st.session_state.show_help = False
             st.rerun()

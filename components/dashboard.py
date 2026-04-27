@@ -98,7 +98,7 @@ def render_dashboard_actions(patient_data):
     if st.session_state.get('ready_to_show_ai', False):
         vitals_summary = {k: v for k, v in patient_data.items() if k in 
                           ['temperature', 'heart_rate', 'respiratory_rate', 'systolic_bp', 'lactate', 'wbc_count']}
-        with st.spinner("Consulting AI Specialist (Gemini 1.5 Flash)..."):
+        with st.spinner("Consulting AI Specialist..."):
             recommendations = get_gemini_recommendations(vitals_summary)
             st.info(f"💡 **AI Clinical Insights**:\n\n{recommendations}")
         if st.button("Dismiss AI Recommendations", key="dash_dismiss_ai_recs"):
